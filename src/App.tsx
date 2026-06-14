@@ -48,7 +48,14 @@ interface YouTubePlaylistResponse extends YouTubeApiError {
   nextPageToken?: string;
 }
 
-type LineKind = "prompt" | "output" | "error" | "dim" | "accent" | "banner" | "video";
+type LineKind =
+  | "prompt"
+  | "output"
+  | "error"
+  | "dim"
+  | "accent"
+  | "banner"
+  | "video";
 
 interface TerminalLine {
   kind: LineKind;
@@ -57,13 +64,13 @@ interface TerminalLine {
 }
 
 const BANNER = String.raw`
- ____  _____ _   _ ____   _    ____ _ _____
-/ ___|| ____| \ | / ___| / \  / __ |____ | ____|
-\___ \|  _| |  \| \___ \/ _ \ / / | |  / / _|
- ___) | |___| |\  |___) / ___ \/ /| | / /| |___
-|____/|_____|_| \_|____/_/   \_\_| |_/_/ |_____|
-
-   X X   W I E K U   ::  RANDOM EPISODE PLAYER
+ ████ █████ █   █  ████  ███   ███    ███ █████ 
+█     █     ██  █ █     █   █ █        █  █     
+ ███  ████  █ █ █  ███  █████ █        █  ████  
+    █ █     █  ██     █ █   █ █     █  █  █     
+████  █████ █   █ ████  █   █  ███   ██   █████ 
+                           
+  X X   W I E K U   ::  RANDOM EPISODE PLAYER
 `;
 
 const HELP_TEXT = [
@@ -79,7 +86,11 @@ const HELP_TEXT = [
 const formatDate = (iso?: string): string => {
   if (!iso) return "";
   const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" });
+  return d.toLocaleDateString("en-GB", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 };
 
 const safeParse = <T,>(value: string | null, fallback: T): T => {
@@ -97,12 +108,14 @@ const maskKey = (key: string): string => {
 };
 
 export default function SensacjePlayer() {
-  const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem(STORAGE_KEY_APIKEY) || "");
+  const [apiKey, setApiKey] = useState<string>(
+    () => localStorage.getItem(STORAGE_KEY_APIKEY) || "",
+  );
   const [videos, setVideos] = useState<VideoItem[]>(() =>
-    safeParse<VideoItem[]>(localStorage.getItem(STORAGE_KEY_VIDEOS), [])
+    safeParse<VideoItem[]>(localStorage.getItem(STORAGE_KEY_VIDEOS), []),
   );
   const [history, setHistory] = useState<VideoItem[]>(() =>
-    safeParse<VideoItem[]>(localStorage.getItem(STORAGE_KEY_HISTORY), [])
+    safeParse<VideoItem[]>(localStorage.getItem(STORAGE_KEY_HISTORY), []),
   );
   const [input, setInput] = useState<string>("");
   const [busy, setBusy] = useState<boolean>(false);
@@ -127,49 +140,62 @@ export default function SensacjePlayer() {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
   }, [lines]);
 
-  const fetchAllVideos = useCallback(async (key: string): Promise<VideoItem[]> => {
-    let allVideos: VideoItem[] = [];
-    let pageToken = "";
+  const fetchAllVideos = useCallback(
+    async (key: string): Promise<VideoItem[]> => {
+      let allVideos: VideoItem[] = [];
+      let pageToken = "";
 
-    const channelRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${CHANNEL_ID}&key=${key}`
-    );
-    const channelData: YouTubeChannelResponse = await channelRes.json();
+      const channelRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${CHANNEL_ID}&key=${key}`,
+      );
+      const channelData: YouTubeChannelResponse = await channelRes.json();
 
-    if (channelData.error) {
-      throw new Error(channelData.error.message || "YouTube API error");
-    }
+      if (channelData.error) {
+        throw new Error(channelData.error.message || "YouTube API error");
+      }
 
-    const uploadsId = channelData.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
-    if (!uploadsId) throw new Error("Channel not found. Check CHANNEL_ID.");
+      const uploadsId =
+        channelData.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+      if (!uploadsId) throw new Error("Channel not found. Check CHANNEL_ID.");
 
-    do {
-      const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsId}&maxResults=50&key=${key}${pageToken ? `&pageToken=${pageToken}` : ""}`;
-      const res = await fetch(url);
-      const data: YouTubePlaylistResponse = await res.json();
-      if (data.error) throw new Error(data.error.message);
+      do {
+        const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsId}&maxResults=50&key=${key}${pageToken ? `&pageToken=${pageToken}` : ""}`;
+        const res = await fetch(url);
+        const data: YouTubePlaylistResponse = await res.json();
+        if (data.error) throw new Error(data.error.message);
 
-      const items: VideoItem[] = (data.items || [])
-        .filter((i) => i.snippet?.resourceId?.videoId && i.snippet?.title !== "Private video")
-        .map((i) => ({
-          id: i.snippet!.resourceId!.videoId as string,
-          title: i.snippet!.title as string,
-          thumb: i.snippet?.thumbnails?.medium?.url || i.snippet?.thumbnails?.default?.url,
-          publishedAt: i.snippet!.publishedAt as string,
-        }));
+        const items: VideoItem[] = (data.items || [])
+          .filter(
+            (i) =>
+              i.snippet?.resourceId?.videoId &&
+              i.snippet?.title !== "Private video",
+          )
+          .map((i) => ({
+            id: i.snippet!.resourceId!.videoId as string,
+            title: i.snippet!.title as string,
+            thumb:
+              i.snippet?.thumbnails?.medium?.url ||
+              i.snippet?.thumbnails?.default?.url,
+            publishedAt: i.snippet!.publishedAt as string,
+          }));
 
-      allVideos = [...allVideos, ...items];
-      pageToken = data.nextPageToken || "";
-    } while (pageToken);
+        allVideos = [...allVideos, ...items];
+        pageToken = data.nextPageToken || "";
+      } while (pageToken);
 
-    return allVideos;
-  }, []);
+      return allVideos;
+    },
+    [],
+  );
 
   const handlePlay = useCallback(async () => {
     if (!apiKey) {
       pushLines([
         { kind: "error", text: "no API key stored." },
-        { kind: "dim", text: "run 'apikey <your_key>' first, or 'getapi' to create one." },
+        {
+          kind: "dim",
+          text: "run 'apikey <your_key>' first, or 'getapi' to create one.",
+        },
       ]);
       return;
     }
@@ -188,7 +214,8 @@ export default function SensacjePlayer() {
       } catch (e) {
         pushLine({
           kind: "error",
-          text: e instanceof Error ? e.message : "failed to fetch episode list.",
+          text:
+            e instanceof Error ? e.message : "failed to fetch episode list.",
         });
         setBusy(false);
         return;
@@ -206,7 +233,10 @@ export default function SensacjePlayer() {
     const source = filteredPool.length > 0 ? filteredPool : pool;
     const pick = source[Math.floor(Math.random() * source.length)];
 
-    const newHistory = [pick, ...history.filter((h) => h.id !== pick.id)].slice(0, 20);
+    const newHistory = [pick, ...history.filter((h) => h.id !== pick.id)].slice(
+      0,
+      20,
+    );
     setHistory(newHistory);
     localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(newHistory));
 
@@ -255,16 +285,25 @@ export default function SensacjePlayer() {
         case "apikey": {
           if (arg.length === 0) {
             if (apiKey) {
-              pushLine({ kind: "output", text: `stored key: ${maskKey(apiKey)}` });
+              pushLine({
+                kind: "output",
+                text: `stored key: ${maskKey(apiKey)}`,
+              });
             } else {
-              pushLine({ kind: "dim", text: "no API key stored. usage: apikey <value>" });
+              pushLine({
+                kind: "dim",
+                text: "no API key stored. usage: apikey <value>",
+              });
             }
           } else {
             setApiKey(arg);
             setVideos([]);
             localStorage.setItem(STORAGE_KEY_APIKEY, arg);
             localStorage.removeItem(STORAGE_KEY_VIDEOS);
-            pushLine({ kind: "accent", text: `API key saved: ${maskKey(arg)}` });
+            pushLine({
+              kind: "accent",
+              text: `API key saved: ${maskKey(arg)}`,
+            });
           }
           break;
         }
@@ -273,7 +312,10 @@ export default function SensacjePlayer() {
           pushLines([
             { kind: "output", text: "opening Google Cloud Console..." },
             { kind: "dim", text: CLOUD_CONSOLE_URL },
-            { kind: "dim", text: "enable 'YouTube Data API v3', then create an API key." },
+            {
+              kind: "dim",
+              text: "enable 'YouTube Data API v3', then create an API key.",
+            },
           ]);
           window.open(CLOUD_CONSOLE_URL, "_blank", "noopener");
           break;
@@ -287,7 +329,7 @@ export default function SensacjePlayer() {
         }
       }
     },
-    [apiKey, handlePlay, pushLine, pushLines]
+    [apiKey, handlePlay, pushLine, pushLines],
   );
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -301,7 +343,11 @@ export default function SensacjePlayer() {
   const renderLine = (line: TerminalLine, idx: number) => {
     switch (line.kind) {
       case "banner":
-        return <pre key={idx} className="banner">{line.text}</pre>;
+        return (
+          <pre key={idx} className="banner">
+            {line.text}
+          </pre>
+        );
 
       case "prompt":
         return (
@@ -338,7 +384,9 @@ export default function SensacjePlayer() {
         return (
           <div key={idx} className="video-block">
             <div className="video-block-title">{v.title}</div>
-            <div className="video-block-meta">published: {formatDate(v.publishedAt)}</div>
+            <div className="video-block-meta">
+              published: {formatDate(v.publishedAt)}
+            </div>
             <a
               className="video-block-link"
               href={`https://www.youtube.com/watch?v=${v.id}`}
