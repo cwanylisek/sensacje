@@ -1,0 +1,6 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="#060a06"/>
+  <rect x="16" y="16" width="480" height="480" fill="none" stroke="#1f4d2b" stroke-width="8"/>
+  <text x="256" y="230" font-family="monospace" font-size="160" font-weight="700" fill="#33ff66" text-anchor="middle">S_</text>
+  <text x="256" y="340" font-family="monospace" font-size="56" fill="#2a8f4a" text-anchor="middle">XX WIEKU</text>
+</svg>
